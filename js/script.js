@@ -3,6 +3,7 @@ const galleryList = document.getElementById('gallery');
 const card = document.getElementsByClassName('card');
 const body = document.querySelector('body');
 
+
 fetch(url)
         .then(response => response.json())
         .then(data => {
@@ -42,10 +43,16 @@ fetch(url)
                 <hr>
                 <p class="modal-text">${employee.phone}</p>
                 <p class="modal-text">${employee.location.street.number} ${employee.location.street.name}, ${employee.location.city} ${employee.location.state} ${employee.location.postcode} </p>
-                <p class="modal-text"> Birthday: ${employee.dob.date}</p>
+                <p class="modal-text"> Birthday: ${formatDate(employee.dob.date)}</p>
             </div>
         </div>`
         )
+        const closeButton = document.getElementById('modal-close-btn');
+        const modal = document.querySelector('.modal-container');
+
+        closeButton.addEventListener('click', () => {
+            modal.remove()
+        });
     }
 
     function selectedModal(data){
@@ -60,4 +67,17 @@ fetch(url)
             })
         }
     }
+
+    //Format the employee birthday in DD/MM/YYYY format
+    function formatDate(date){
+        //rsplit out date and time
+        const removeTime = date.split('T');
+
+        //split out date, month and year
+        const splitDate = removeTime[0].split('-');
+        //return the birthdate in the DD/MM/YYYY format
+        return splitDate[1] + '/' + splitDate[2] + '/'+ splitDate[0];
+    }
+
+    //TODO: format the employee phone number in (XXX) XXX-XXXX
 
