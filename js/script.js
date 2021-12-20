@@ -5,19 +5,53 @@
  * When an employee is selected, a pop-up modal displays with additional information.
  * */
 
-//API url that retrieves 12 results with only necessary fields for US, AU and NZ (due to phone number formatting)
-const url = 'https://randomuser.me/api/?results=12&inc=name,email,location,dob,picture,cell&nat=us,au,nz';
-const galleryList = document.getElementById('gallery');
-const card = document.getElementsByClassName('card');
-const body = document.querySelector('body');
+    //API url that retrieves 12 results with only necessary fields for US, AU and NZ (due to phone number formatting)
+    const url = 'https://randomuser.me/api/?results=12&inc=name,email,location,dob,picture,cell&nat=us,au,nz';
+    const galleryList = document.getElementById('gallery');
+    const card = document.getElementsByClassName('card');
+    const body = document.querySelector('body');
+    const searchContainer = document.querySelector('.search-container');
+    const headerContainer = document.querySelector('.header-text-container');
+    const companyEmployees = [];
 
-//Fetch the data for the employees and pass it to the functions
-fetch(url)
+    //SeearchBox display
+    searchBox = `<form action="#" method="get">
+    <input type="search" id="search-input" class="search-input" placeholder="Search...">
+    <input type="submit" value="&#x1F50D;" id="search-submit" class="search-submit">
+    </form>`;
+
+    searchContainer.insertAdjacentHTML('afterbegin', searchBox);
+
+    /**
+    *Fetch the data for the employees and pass it to the functions
+    *
+    */
+
+   fetch(url)
+        .then(checkStatus)
         .then(response => response.json())
         .then(data => {
-            generateEmployee(data)
+            displaySearchContainer(true)
+            generateEmployee(data.results)
             selectedModal(data.results)
+            companyEmployees.push(...data.results)
         })
+        .catch(error => {
+            //change the header text and disply the error 
+            headerContainer.innerHTML = `There was an error. Error message: ${error}`;
+            //hide the search container if the there is an error
+            displaySearchContainer(false);
+        })
+
+    /**
+    *Function to determine if there is an error. If an error is received, catch the error message
+    *
+    */
+
+    function checkStatus(response){
+      return (response.ok ? Promise.resolve(response) : Promise.reject(new Error(response.statusText)));
+    }
+
 
     /**
     *Function to generate the gallery list to be displayed on the page with the users photo, name,
@@ -26,7 +60,7 @@ fetch(url)
     */
 
     function generateEmployee(data){
-     data.results.map( person => {
+     data.map(person => {
            galleryList.insertAdjacentHTML('beforeend',
                 `<div class="card">
                     <div class="card-img-container">
@@ -48,6 +82,10 @@ fetch(url)
     */
 
     function displayModal(employee){
+        //Index number of the employee
+        let employeeIndex = companyEmployees.indexOf(employee);
+
+        //create the modal pop-up container
         body.insertAdjacentHTML('beforeend',
         `<div class="modal-container">
             <div class="modal">
@@ -62,15 +100,43 @@ fetch(url)
                 <p class="modal-text">${employee.location.street.number} ${employee.location.street.name}, ${employee.location.city} ${employee.location.state} ${employee.location.postcode} </p>
                 <p class="modal-text"> Birthday: ${formatDate(employee.dob.date)}</p>
             </div>
+            <div class="modal-btn-container">
+                <button type="button" id="modal-prev" class="modal-prev btn">Prev</button>
+                <button type="button" id="modal-next" class="modal-next btn">Next</button>
+            </div>
         </div>`
         )
+
         //Variable for the close button
         const closeButton = document.getElementById('modal-close-btn');
 
         //Variable for the modal container
         const modal = document.querySelector('.modal-container');
 
-        //Close the modal when the user clicks the close button
+        const previousButton = document.getElementById('modal-prev');
+        const nextbutton = document.getElementById('modal-next');
+
+        //If the employee indext is 0, hide the previous button from the modal view
+        if(employeeIndex === 0){
+            previousButton.style.display = 'none';
+        }
+        //If the employee index is 11, hide the next button from the modal view
+        if(employeeIndex === 11){
+            nextbutton.style.display = 'none';
+        }
+
+        document.getElementById('modal-next').addEventListener('click',() => {
+            employeeIndex = employeeIndex + 1;
+            modal.remove();
+            displayModal(companyEmployees[employeeIndex]);
+        })
+
+        document.getElementById('modal-prev').addEventListener('click',() => {
+                employeeIndex = employeeIndex - 1;
+                modal.remove();
+                displayModal(companyEmployees[employeeIndex]);
+        })
+
         closeButton.addEventListener('click', () => {
             modal.remove()
         });
@@ -130,3 +196,78 @@ fetch(url)
         //return formatted Phone number to be used in displayModal()
         return formattedPhone;
     }
+
+    /**
+    *Function for when a user searches for en employee that compares the searched 
+    * named to the employees on the page then passes the employee(s) matched to the
+    * displaySearchResults function
+    * @param employeeName - Employee name being searched for
+    * @param companyEmployees - Employees list stored from the api
+    */
+
+    function searchForEmployee(employeeName, companyEmployees){
+        const searchResults = [];
+        companyEmployees.forEach(employee => {
+            const employeeNameLowercase = `${employee.name.first} ${employee.name.last}`.toLowerCase();
+            employeeNameLowercase.includes(employeeName) && employeeName !== null ? searchResults.push(employee) : null
+        });
+        displaySearchResults(searchResults);
+    }
+
+    /**
+    * Determine if the search results matched the employees. 
+    * If no match is received, display a message
+    * If a match is received display, the employee(s) matching
+    * Otherwise, display all the employees received from the api with 
+    * the correct header
+    * @param searchResults - list of employees matching the search results
+    */
+
+    function displaySearchResults(searchResults){
+        if(searchResults.length === 0){
+            headerContainer.innerHTML = `<h1> No employees found with that name</h1>`;
+            galleryList.innerHTML = '';
+
+        } else if(searchResults.length > 0){
+            headerContainer.innerHTML = `<h1>AWESOME STARTUP EMPLOYEE DIRECTORY<h1>`;
+            galleryList.innerHTML = '';
+            generateEmployee(searchResults);
+            selectedModal(searchResults);
+        }
+        else{
+            headerContainer.innerHTML = `<h1>AWESOME STARTUP EMPLOYEE DIRECTORY<h1>`;
+            generateEmployee(companyEmployees);
+            selectedModal(searchResults);
+        }
+    }
+
+    /**
+    *Fuction that determines whether the search container should display
+    *The search container shouldn't display if there is an error
+    */
+
+    function displaySearchContainer(displaySearch){
+        if(!displaySearch){
+            searchContainer.style.display = 'none';
+        } else{
+            searchContainer.style.display = 'active';
+        }
+    }
+
+    /**
+    *Event listener on the search submit button to search for the employee name
+    *entered
+    */
+    document.querySelector('#search-submit').addEventListener('click',() => {
+        const employeeName = document.querySelector('#search-input').value.toLowerCase();
+        searchForEmployee(employeeName, companyEmployees);
+    })
+    /**
+    *Event listener on the search submit button to search for the employee name
+    *while the user is typing the name into the search input box
+    */
+    document.querySelector('#search-input').addEventListener('keyup',() => {
+        const employeeName = document.querySelector('#search-input').value.toLowerCase();
+        searchForEmployee(employeeName, companyEmployees);
+    })
+
